@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI Triage Lengkap | Semua Kategori Pasien + SDM + Akurasi AI</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #eef2f7;
+            padding: 20px;
+        }
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0b2b40, #123e52);
+            color: white;
+            border-radius: 24px;
+            padding: 20px 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .badge-surge {
+            background: #2b6e4f;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 12px;
+        }
+        /* Control Panel Utama */
+        .control-panel {
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-end;
+        }
+        .control-group {
+            flex: 1;
+            min-width: 130px;
+        }
+        .control-group label {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #1e3a5f;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            font-weight: 500;
+            background: #f9fafb;
+        }
+        .btn-reset {
+            background: #1e6f5c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        /* Panel SDM (Dokter & Perawat) */
+        .sdm-panel {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            align-items: center;
+            border: 1px solid #e2e8f0;
+        }
+        .sdm-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 60px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .sdm-item i {
+            font-size: 1.5rem;
+            color: #1e6f5c;
+        }
+        .sdm-item input {
+            width: 80px;
+            padding: 8px;
+            border-radius: 40px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+            font-weight: bold;
+        }
+        .accuracy-score {
+            background: #0f3b5c;
+            color: white;
+            padding: 8px 24px;
+            border-radius: 60px;
+            font-weight: bold;
+            margin-left: auto;
+        }
+        /* Stat Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 24px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 8px solid;
+        }
+        .stat-card h3 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #475569;
+        }
+        .stat-number {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin: 4px 0;
+        }
+        /* Triage Queue Ringkasan */
+        .triage-queue {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .queue-card {
+            background: white;
+            border-radius: 20px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .queue-color {
+            width: 48px;
+            height: 48px;
+            border-radius: 48px;
+            margin: 0 auto 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .queue-count {
+            font-size: 1.6rem;
+            font-weight: 800;
+        }
+        /* Daftar Pasien - 5 kolom scrollable */
+        .patient-section {
+            margin-bottom: 28px;
+        }
+        .patient-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 18px;
+        }
+        .patient-col {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+        }
+        .patient-header {
+            padding: 14px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        .patient-list {
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 6px 0;
+        }
+        .patient-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 0.75rem;
+        }
+        .patient-name {
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+        }
+        .patient-detail {
+            font-size: 0.65rem;
+            color: #4b5563;
+            margin-top: 4px;
+        }
+        .empty-patients {
+            padding: 24px;
+            text-align: center;
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.7rem;
+        }
+        .insight-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .chart-box {
+            flex: 2;
+            background: white;
+            border-radius: 24px;
+            padding: 16px;
+        }
+        .warning-box {
+            flex: 1.2;
+            background: #fff9e6;
+            border-radius: 24px;
+            padding: 16px;
+            border: 1px solid #facc15;
+        }
+        .log-list {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 20px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 0.7rem;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        button { cursor: pointer; }
+        @media (max-width: 1100px) {
+            .patient-grid { grid-template-columns: repeat(2, 1fr); }
+            .triage-queue { grid-template-columns: repeat(2,1fr); }
+        }
+        @media (max-width: 700px) {
+            .patient-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <h1><i class="fas fa-robot"></i> AI Triage System | Lengkap Semua Kategori Pasien</h1>
+        <p>Daftar nama pasien: Resusitasi (Merah) | Emergensi (Kuning) | Non-Emergensi (Hijau) | Ringan (Putih) | Meninggal (Hitam). Jumlah dokter & perawat dinamis + skor akurasi AI.</p>
+        <div id="surgeIndicator" class="badge-surge">✅ Mode Normal</div>
+    </div>
+
+    <!-- Kontrol Utama -->
+    <div class="control-panel">
+        <div class="control-group">
+            <label><i class="fas fa-users"></i> Total Pasien Antrean</label>
+            <input type="range" id="totalSlider" min="0" max="160" value="55" step="1">
+            <span id="totalValueDisplay" style="font-weight:bold;">55</span>
+        </div>
+        <div class="control-group">
+            <label><i class="fas fa-procedures"></i> % Pasien Kritis (Merah+Kuning)</label>
+            <input type="range" id="acuitySlider" min="5" max="60" value="30" step="1">
+            <span id="acuityDisplay">30%</span>
+        </div>
+        <div class="control-group">
+            <label><i class="fas fa-tachometer-alt"></i> Kapasitas RS (pasien/jam)</label>
+            <input type="number" id="capacityInput" value="16" step="1" min="5" max="60">
+        </div>
+        <div class="control-group">
+            <label><i class="fas fa-microchip"></i> AI Sensitivity</label>
+            <select id="aiSensitivity">
+                <option value="normal">Normal</option>
+                <option value="aggressive">Agresif (cepat, FN↑)</option>
+                <option value="conservative">Konservatif (aman)</option>
+            </select>
+        </div>
+        <button class="btn-reset" id="simulateBtn"><i class="fas fa-chart-line"></i> Simulasi</button>
+    </div>
+
+    <!-- Panel SDM: Dokter & Perawat + Akurasi AI -->
+    <div class="sdm-panel">
+        <div class="sdm-item">
+            <i class="fas fa-user-md"></i>
+            <label>Dokter</label>
+            <input type="number" id="doctorCount" value="10" min="1" max="40" step="1">
+        </div>
+        <div class="sdm-item">
+            <i class="fas fa-user-nurse"></i>
+            <label>Perawat</label>
+            <input type="number" id="nurseCount" value="24" min="1" max="80" step="1">
+        </div>
+        <div class="accuracy-score" id="accuracyBox">
+            <i class="fas fa-chart-simple"></i> Akurasi AI: --%
+        </div>
+    </div>
+
+    <!-- Stat Ringkasan -->
+    <div class="stats-grid">
+        <div class="stat-card" style="border-left-color:#0f3b5c;"><h3>⏱️ Rata-rata tunggu</h3><div class="stat-number" id="avgWaitTime">-- min</div></div>
+        <div class="stat-card" style="border-left-color:#dc2626;"><h3>⚠️ False Negative Risk</h3><div class="stat-number" id="fnRisk">--%</div></div>
+        <div class="stat-card" style="border-left-color:#f59e0b;"><h3>🏥 Beban RS</h3><div class="stat-number" id="loadFactor">--%</div></div>
+        <div class="stat-card" style="border-left-color:#10b981;"><h3>🔄 Re-triage</h3><div class="stat-number" id="retriageStatus">Aktif</div></div>
+    </div>
+
+    <!-- Ringkasan 5 Level -->
+    <div class="triage-queue" id="triageContainer"></div>
+
+    <!-- DAFTAR PASIEN LENGKAP 5 KATEGORI -->
+    <div class="patient-section">
+        <div class="patient-grid" id="allPatientLists"></div>
+    </div>
+
+    <!-- Grafik + Peringatan -->
+    <div class="insight-row">
+        <div class="chart-box">
+            <h3><i class="fas fa-chart-bar"></i> Distribusi Prioritas</h3>
+            <canvas id="triageChart" height="200" style="max-height: 220px;"></canvas>
+        </div>
+        <div class="warning-box">
+            <div class="warning-title"><i class="fas fa-exclamation-triangle"></i> Analisis AI & Rekomendasi</div>
+            <div id="aiWarnings"></div>
+        </div>
+    </div>
+
+    <!-- Event Log -->
+    <div style="margin-top: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <h3><i class="fas fa-history"></i> Event Log AI</h3>
+            <button id="clearLogBtn" style="background:#334155; color:white; border:none; border-radius:40px; padding:4px 14px;">Clear</button>
+        </div>
+        <div class="log-list" id="eventLog"><p>▶ Sistem siap. Atur parameter untuk simulasi.</p></div>
+    </div>
+</div>
+
+<script>
+    // ----------------------- DATA GENERATOR NAMA & KELUHAN -----------------------
+    const firstNames = ["Andi","Budi","Citra","Dewi","Eka","Farhan","Gita","Hadi","Indah","Joko","Kartika","Lina","Mulyadi","Nina","Oscar","Putri","Qori","Rina","Siti","Tono","Umar","Vina","Wahyu","Yuni","Zaki"];
+    const lastNames = ["Santoso","Wijaya","Purnama","Hidayat","Kusuma","Nugroho","Ramadhan","Saputra","Mulyani","Pratiwi","Gunawan","Wibowo","Salim","Hartono"];
+    const kondisi = {
+        merah: ["Henti Jantung","Trauma Berat","Tidak Sadar","Gagal Napas","Perdarahan Hebat","Shock Anafilaktik"],
+        kuning: ["Nyeri Dada","Sesak Napas Berat","Stroke Ringan","Fraktur Terbuka","Demam 40°C + Kejang","Hipertensi Krisis"],
+        hijau: ["Patah Tulang Tertutup","Demam 38°C","Luka Jahit","Migrain","Diare Ringan","Batuk 3 hari"],
+        putih: ["Keluhan Ringan","Kontrol Luka","Resep Obat","Luka Lecet","Vaksinasi","Cek Lab Rutin"],
+        hitam: ["Meninggal di IGD", "Henti Napas Refraktori", "Trauma Massif tidak terselamatkan"]
+    };
+    function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function randomAge(min,max) { return Math.floor(Math.random()*(max-min+1)+min); }
+    function randomTime() { const h = Math.floor(Math.random()*6)+1; return `${h} jam ${Math.floor(Math.random()*60)} menit lalu`; }
+    function generatePatient(level) {
+        let name = `${randomItem(firstNames)} ${randomItem(lastNames)}`;
+        let age = randomAge(17, 88);
+        let complaint = randomItem(kondisi[level] || kondisi.hijau);
+        let arrival = randomTime();
+        return { name, age, complaint, arrival };
+    }
+    function generatePatientList(level, count) {
+        let list = [];
+        for(let i=0; i<count; i++) list.push(generatePatient(level));
+        return list;
+    }
+
+    // ----------------------- SIMULASI TRIAGE -----------------------
+    let currentDist = { merah:0, kuning:0, hijau:0, putih:0, hitam:0 };
+    let chartInstance = null;
+    let eventLogs = [];
+    function addLog(msg) { let t=new Date().toLocaleTimeString(); eventLogs.unshift(`[${t}] ${msg}`); if(eventLogs.length>12) eventLogs.pop(); document.getElementById('eventLog').innerHTML = eventLogs.map(l=>`<p>▶ ${l}</p>`).join(''); }
+
+    function computeTriage(total, criticalPercent, aiMode) {
+        let critical = Math.floor(total * (criticalPercent/100));
+        let nonCritical = total - critical;
+        let merahRatio=0.22, kuningRatio=0.78;
+        if(aiMode==='aggressive') { merahRatio=0.12; kuningRatio=0.48; }
+        else if(aiMode==='conservative') { merahRatio=0.35; kuningRatio=0.65; }
+        let merah = Math.min(Math.floor(critical*merahRatio), total);
+        let kuning = Math.min(Math.floor(critical*kuningRatio), total-merah);
+        let falseNeg = critical - (merah+kuning);
+        let greenBase = Math.floor(nonCritical*0.6);
+        let whiteBase = Math.floor(nonCritical*0.35);
+        let blackBase = total - (merah+kuning+greenBase+whiteBase);
+        if(blackBase<0) blackBase=0;
+        let hijau = greenBase + falseNeg;
+        let putih = whiteBase;
+        let hitam = Math.min(blackBase, total-(merah+kuning+hijau+putih));
+        let sum=merah+kuning+hijau+putih+hitam;
+        if(sum!==total && total>sum) hijau += (total-sum);
+        return { merah, kuning, hijau, putih, hitam, falseNeg };
+    }
+
+    function computeWaitTimes(dist, capacity, doctors, nurses) {
+        let sdmFactor = Math.max(0.7, Math.min(2.0, (12/doctors)*0.5 + (28/nurses)*0.3));
+        let workload = (dist.merah*5)+(dist.kuning*12)+(dist.hijau*20)+(dist.putih*30);
+        let capMin = capacity*60;
+        let loadRatio = capMin>0 ? workload/capMin : 3;
+        let multiplier = loadRatio>1 ? loadRatio*1.2 : 0.7+(loadRatio*0.3);
+        multiplier = multiplier * sdmFactor;
+        let get = (base,level)=>{
+            if(level==='hitam') return 999;
+            let val = base*multiplier;
+            if(level==='merah') val=Math.min(val,5);
+            if(level==='kuning') val=Math.min(val,28);
+            if(level==='hijau') val=Math.min(val,80);
+            if(level==='putih') val=Math.min(val,150);
+            return Math.floor(val);
+        };
+        let waits = { merah:get(2,'merah'), kuning:get(12,'kuning'), hijau:get(26,'hijau'), putih:get(50,'putih'), hitam:999 };
+        let totalP = dist.merah+dist.kuning+dist.hijau+dist.putih;
+        let avg = totalP>0 ? Math.floor((dist.merah*waits.merah+dist.kuning*waits.kuning+dist.hijau*waits.hijau+dist.putih*waits.putih)/totalP) : 0;
+        return { waits, avg };
+    }
+
+    function computeAccuracy(fnRisk, loadPercent, doctors, nurses) {
+        // Akurasi = 100% - FN Risk, lalu dikurangi faktor beban & SDM
+        let baseAcc = 100 - fnRisk;
+        let loadPenalty = loadPercent > 120 ? (loadPercent-120)*0.2 : 0;
+        let sdmBonus = (doctors/12)*2 + (nurses/25)*1.5;
+        let final = baseAcc - loadPenalty + Math.min(12, sdmBonus);
+        return Math.min(99, Math.max(45, Math.floor(final)));
+    }
+
+    function renderAllPatientLists(merah, kuning, hijau, putih, hitam) {
+        const container = document.getElementById('allPatientLists');
+        const levels = [
+            { name:'RESUSITASI', key:'merah', count:merah, bg:'#e11d48', icon:'fas fa-heartbeat', colorText:'white' },
+            { name:'EMERGENSI', key:'kuning', count:kuning, bg:'#f59e0b', icon:'fas fa-exclamation-triangle' },
+            { name:'NON-EMERGENSI', key:'hijau', count:hijau, bg:'#2ba14b', icon:'fas fa-walking' },
+            { name:'RINGAN', key:'putih', count:putih, bg:'#94a3b8', icon:'fas fa-band-aid' },
+            { name:'MENINGGAL', key:'hitam', count:hitam, bg:'#1e293b', icon:'fas fa-skull' }
+        ];
+        let html = '';
+        for(let lev of levels) {
+            let patients = generatePatientList(lev.key, lev.count);
+            let patientHtml = '';
+            if(patients.length===0) patientHtml = '<div class="empty-patients"><i class="fas fa-user-slash"></i> Tidak ada pasien</div>';
+            else {
+                patientHtml = patients.map(p => `
+                    <div class="patient-item">
+                        <div class="patient-name"><span>${p.name} (${p.age} th)</span></div>
+                        <div class="patient-detail"><i class="fas fa-stethoscope"></i> ${p.complaint} <br> 🕒 ${p.arrival}</div>
+                    </div>
+                `).join('');
+            }
+            html += `
+                <div class="patient-col">
+                    <div class="patient-header" style="background:${lev.bg};">
+                        <i class="${lev.icon}"></i> ${lev.name} <span style="font-size:0.8rem;">(${lev.count})</span>
+                    </div>
+                    <div class="patient-list">${patientHtml}</div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function updateDashboard() {
+        let total = parseInt(document.getElementById('totalSlider').value);
+        let criticalPercent = parseInt(document.getElementById('acuitySlider').value);
+        let aiMode = document.getElementById('aiSensitivity').value;
+        let capacity = parseInt(document.getElementById('capacityInput').value);
+        let doctors = parseInt(document.getElementById('doctorCount').value);
+        let nurses = parseInt(document.getElementById('nurseCount').value);
+        document.getElementById('totalValueDisplay').innerText = total;
+        document.getElementById('acuityDisplay').innerText = criticalPercent+"%";
+
+        let dist = computeTriage(total, criticalPercent, aiMode);
+        currentDist = dist;
+
+        let workloadMin = (dist.merah*5)+(dist.kuning*12)+(dist.hijau*20)+(dist.putih*30);
+        let loadPercent = (capacity*60)>0 ? Math.min(300, Math.floor((workloadMin/(capacity*60))*100)) : 200;
+        let fnRisk = (()=>{
+            let base = aiMode==='aggressive'?0.22: (aiMode==='normal'?0.08:0.04);
+            let surge = loadPercent>130?2.2: (loadPercent>100?1.6:1);
+            return Math.min(45, Math.floor(base*surge*(criticalPercent/25)*100));
+        })();
+        let waitData = computeWaitTimes(dist, capacity, doctors, nurses);
+        let accuracy = computeAccuracy(fnRisk, loadPercent, doctors, nurses);
+        let surgeActive = loadPercent>=130;
+        document.getElementById('surgeIndicator').innerHTML = surgeActive ? "⚠️ SURGE MODE AKTIF" : "✅ Mode Normal";
+        document.getElementById('surgeIndicator').style.background = surgeActive ? "#b91c1c" : "#2b6e4f";
+        document.getElementById('avgWaitTime').innerHTML = waitData.avg+" min";
+        document.getElementById('fnRisk').innerHTML = fnRisk+"%";
+        document.getElementById('loadFactor').innerHTML = loadPercent+"%";
+        document.getElementById('retriageStatus').innerHTML = surgeActive ? "Re-triage 10 menit" : "Re-triage 25 menit";
+        document.getElementById('accuracyBox').innerHTML = `<i class="fas fa-chart-simple"></i> Akurasi AI: ${accuracy}%`;
+
+        // Render queue cards
+        const titles = ['MERAH','KUNING','HIJAU','PUTIH','HITAM'];
+        const keys=['merah','kuning','hijau','putih','hitam'];
+        const colors=['#e11d48','#f59e0b','#2ba14b','#94a3b8','#1e293b'];
+        let container = document.getElementById('triageContainer');
+        container.innerHTML = '';
+        keys.forEach((k,idx)=>{
+            let card = document.createElement('div'); card.className='queue-card';
+            card.innerHTML = `
+                <div class="queue-color" style="background:${colors[idx]}; color:white;">${idx+1}</div>
+                <div class="queue-count">${dist[k]}</div>
+                <div style="font-size:0.7rem;">tunggu: ${waitData.waits[k]===999 ? '≥6 jam' : waitData.waits[k]+' menit'}</div>
+            `;
+            container.appendChild(card);
+        });
+
+        renderAllPatientLists(dist.merah, dist.kuning, dist.hijau, dist.putih, dist.hitam);
+
+        // Chart
+        if(chartInstance) chartInstance.destroy();
+        let ctx = document.getElementById('triageChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type:'bar',
+            data:{ labels:['Merah','Kuning','Hijau','Putih','Hitam'], datasets:[{ label:'Pasien', data:[dist.merah,dist.kuning,dist.hijau,dist.putih,dist.hitam], backgroundColor:colors, borderRadius:10 }] },
+            options:{ responsive:true, maintainAspectRatio:true }
+        });
+
+        let warn = "";
+        if(surgeActive) warn += "🚨 MEMBLUDAK! Buka tenda darurat. ";
+        if(fnRisk>20) warn += `⚠️ False Negative ${fnRisk}%, waspadai pasien tersembunyi. `;
+        if(doctors<6 && total>40) warn += "👨‍⚕️ Dokter sangat kurang, tambah shift. ";
+        if(accuracy<70) warn += `📉 Akurasi AI rendah (${accuracy}%), perlu intervensi manual.`;
+        if(!warn) warn = "✅ Sistem stabil, akurasi AI baik.";
+        document.getElementById('aiWarnings').innerHTML = `<i class="fas fa-brain"></i> ${warn}`;
+
+        addLog(`Update | total=${total}, kritis=${criticalPercent}%, mode=${aiMode}, beban=${loadPercent}%, FN=${fnRisk}%, Akurasi=${accuracy}%, Dokter=${doctors}, Perawat=${nurses}`);
+        if(surgeActive) addLog(`⚠️ SURGE: Prioritas dinamis diaktifkan.`);
+    }
+
+    // Event Listeners
+    ['totalSlider','acuitySlider','capacityInput','aiSensitivity','doctorCount','nurseCount'].forEach(id=>{
+        let el = document.getElementById(id);
+        if(el) el.addEventListener('input', ()=>updateDashboard());
+    });
+    document.getElementById('simulateBtn').addEventListener('click', ()=>updateDashboard());
+    document.getElementById('clearLogBtn').addEventListener('click', ()=>{ eventLogs=[]; document.getElementById('eventLog').innerHTML='<p>▶ Log dibersihkan.</p>'; addLog("Log direset."); });
+    updateDashboard();
+</script>
+</body>
+</html>
